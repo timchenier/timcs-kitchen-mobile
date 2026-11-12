@@ -4,7 +4,7 @@ The **standalone native Expo/React Native app** for [TimC's Kitchen](https://tim
 
 ## Launch from your browser (no Terminal)
 
-1. Open **[Expo Launch](https://launch.expo.dev/)**.
+1. Open **[Launch TimC's Kitchen in Expo](https://launch.dev/?github=https%3A%2F%2Fgithub.com%2Ftimchenier%2Ftimcs-kitchen-mobile&projectName=timcs-kitchen&appName=TimC%27s%20Kitchen&appBundleId=com.timcskitchen.mobile)**. The repository and identifiers are prefilled.
 2. Paste this public GitHub URL: **https://github.com/timchenier/timcs-kitchen-mobile**.
 3. Sign in to your **Expo Free** account and follow the GitHub authorization prompts.
 4. Choose **iOS → TestFlight**, and select the **existing** TimC's Kitchen record in Apple App Store Connect. Do **not** create a second bundle identifier or a second app.
