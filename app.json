@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "TimC's Kitchen",
+    "slug": "timcs-kitchen",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "timcskitchen",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FBF6EC",
+    "icon": "./assets/icon.png",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.timcskitchen.mobile",
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "appleTeamId": "4ADR7ZND8C",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "com.timcskitchen.mobile",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#54304E"
+      }
+    },
+    "extra": {
+      "kitchenOrigin": "https://timcskitchen.com"
+    }
+  }
+}

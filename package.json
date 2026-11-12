@@ -1,0 +1,30 @@
+{
+  "name": "timcs-kitchen-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "postinstall": "node scripts/generate-icon.mjs",
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "typecheck": "tsc --noEmit",
+    "doctor": "expo-doctor",
+    "build:pixel": "eas build -p android --profile preview",
+    "build:testflight": "eas build -p ios --profile testflight",
+    "submit:testflight": "eas submit -p ios --latest --profile testflight"
+  },
+  "dependencies": {
+    "expo": "~58.0.23",
+    "expo-status-bar": "*",
+    "expo-keep-awake": "*",
+    "react": "19.3.0",
+    "react-native": "0.88.1"
+  },
+  "devDependencies": {
+    "@types/react": "~19.3.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^6.0.0",
+    "sharp": "^0.34.4"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "testflight": {
+      "distribution": "store",
+      "ios": {},
+      "autoIncrement": "buildNumber"
+    },
+    "play-internal": {
+      "distribution": "store",
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  },
+  "submit": {
+    "testflight": {
+      "ios": {
+        "ascAppId": "6833304903"
+      }
+    },
+    "play-internal": {
+      "android": {
+        "track": "internal"
+      }
+    }
+  }
+}
