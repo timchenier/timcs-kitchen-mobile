@@ -1,0 +1,32 @@
+name: Verify TimC's Kitchen Mobile
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  expo-static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout mobile project
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install native app dependencies
+        run: npm install --no-audit --no-fund
+      - name: Check SDK package compatibility
+        run: npx expo install --check
+      - name: Typecheck native screens
+        run: npm run typecheck
+      - name: Validate Expo configuration and icon
+        run: |
+          test -f assets/icon.png
+          npx expo config --type public
+# No Expo cloud builds, app submission, Apple authorization, paid build,
+# secrets, or deployments are performed by this workflow.
