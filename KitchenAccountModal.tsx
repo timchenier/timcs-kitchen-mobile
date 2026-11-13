@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ActivityIndicator, Linking, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { auth } from "./kitchenSync";
+import { auth, auditSignIn } from "./kitchenSync";
 
 const PLUM = "#57384F";
 const SITE = "https://timcskitchen.com";
@@ -24,6 +24,7 @@ export default function KitchenAccountModal({
     try {
       const result = await auth.auth.signInWithPassword({ email: loginEmail.trim(), password });
       if (result.error) throw result.error;
+      await auditSignIn().catch(() => {});
       setPassword("");
       await onConnected();
     } catch (e) {
