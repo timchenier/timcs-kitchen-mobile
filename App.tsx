@@ -4,8 +4,10 @@ import {
   Share, StatusBar, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import { useKeepAwake } from "expo-keep-awake";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const API = "https://timcskitchen.com/api/recipes/mobile-catalog";
+const CATALOG_CACHE_KEY = "timcskitchen:published-recipes:v1";
 const SITE = "https://timcskitchen.com";
 const PLUM = "#57384F";
 const GOLD = "#D6A965";
@@ -201,25 +203,54 @@ function RecipeDetails({
 export default function App() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const hasCatalog = useRef(false);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
   const [selected, setSelected] = useState<Recipe | null>(null);
   const [mode, setMode] = useState<Mode>("library");
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (refresh = false) => {
+    if (refresh) setRefreshing(true);
+    else setLoading(true);
     setError("");
+
+    // Display previously downloaded public recipes while the network refreshes.
+    // No private recipes, credentials, or account data are stored on-device.
+    if (!refresh) {
+      try {
+        const saved = await AsyncStorage.getItem(CATALOG_CACHE_KEY);
+        const cached = saved ? (JSON.parse(saved) as Recipe[]) : null;
+        if (Array.isArray(cached) && cached.length > 0) {
+          hasCatalog.current = true;
+          setRecipes(cached);
+          setLoading(false);
+        }
+      } catch {
+        // A missing or damaged cache must never stop the live request.
+      }
+    }
+
     try {
       const response = await fetch(API);
       if (!response.ok) throw new Error("Kitchen catalog unavailable");
       const data = (await response.json()) as Catalog;
       if (!data.ok || !Array.isArray(data.recipes)) throw new Error("Invalid catalog");
+      hasCatalog.current = true;
       setRecipes(data.recipes);
+      try {
+        await AsyncStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify(data.recipes));
+      } catch {
+        // The online cookbook remains usable when device storage is unavailable.
+      }
     } catch {
-      setError("Can't connect to the Kitchen right now. Check your connection and try again.");
+      if (!hasCatalog.current) {
+        setError("Can't connect to the Kitchen right now. Check your connection and try again.");
+      }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -247,6 +278,8 @@ export default function App() {
               </View>
               <FlatList
                 data={matching}
+                refreshing={refreshing}
+                onRefresh={() => void load(true)}
                 keyExtractor={(item) => item.slug}
                 contentContainerStyle={styles.listBody}
                 ListHeaderComponent={
