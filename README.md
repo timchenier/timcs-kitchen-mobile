@@ -54,3 +54,18 @@ GitHub's public repositories and Expo's Free tier can be used without a new subs
 ### Developers (optional)
 
 The source is an Expo SDK 58 project; entrypoint `index.js`, main UI `App.tsx`. `npm install` can regenerate the icon from `assets/kitchen-icon.svg`. The root `app.json` and `eas.json` contain the mobile application settings. Use this repository's root as the project directory.
+
+## Next beta: Kitchen account sync (requires backend mobile-sync route)
+
+This opt-in feature signs into the **existing** TimC's Kitchen account through Supabase Auth, with the same password used at timcskitchen.com. No new database, account service, project, subscription, or secret key is created. The mobile package contains only a Supabase **publishable** key; it never embeds service-role or private credentials.
+
+- Favorites are loaded from and saved into the existing Kitchen favorites table after membership approval.
+- When signed out or awaiting approval, hearts stay local to this device; they are not silently imported into another person's account.
+- The owner can review recent cooking sessions and intentionally add a dated cooking journal record from a recipe. Detailed notes, editing, and photos remain available on the existing website.
+- Local recipe catalog caching and pull-to-refresh from the prior release remain unchanged.
+- Existing design, recipe cards, and native cooking mode remain intact except for small, additive account, favorites, and journal controls.
+- Auth credentials are stored with Expo SecureStore; access tokens are validated on the server on every request. The website's existing cookie-based routes are not modified.
+
+**Deployment order:** deploy and verify the isolated `/api/recipes/mobile-sync` server route from `timchenier/jackos.live` before testing native account sign-in. Build and distribute a *new* signed TestFlight version only after both GitHub checks pass and the iPhone experience has been tested. GitHub source changes do not update the app currently installed on phones.
+
+**Test cases:** existing account sign-in; pending-account access block; cross-account isolation; favorites round-trip web ↔ iPhone; owner-only cook history; airplane-mode offline catalog; sign-out returns to device favorites; private Studio never appears in the mobile app.
