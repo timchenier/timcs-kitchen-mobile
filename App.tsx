@@ -424,9 +424,8 @@ export default function App() {
                   <Image source={{ uri: item.photoUrl }} style={styles.cardImage as ImageStyle} />
                   <View style={styles.cardCopy}><Text style={styles.cardCategory}>{item.category}</Text><Text numberOfLines={2} style={styles.cardTitle}>{item.title}</Text><Text style={styles.meta}>{item.prepMinutes + item.cookMinutes} min · {item.steps.length} timed steps</Text></View>
                   <Pressable accessibilityRole="button" accessibilityLabel={favorites.includes(item.slug) ? "Remove favorite" : "Save favorite"} onPress={(event) => { event.stopPropagation(); void toggleFavorite(item.slug); }}>
-                    <Text style={[styles.cardChevron, { fontSize: 24 }]}>{favorites.includes(item.slug) ? "♥" : "♡"}</Text>
+                    <Text style={styles.cardChevron}>{favorites.includes(item.slug) ? "♥" : "♡"}</Text>
                   </Pressable>
-                  <Text style={styles.cardChevron}>›</Text>
                 </Pressable>}
                 ListEmptyComponent={!loading && !error ? <Text style={styles.empty}>No recipes match those filters.</Text> : undefined}
                 ListFooterComponent={<View style={styles.footer}><Tap secondary onPress={() => void Linking.openURL(`${SITE}/recipes/studio`)}>Open Recipe Studio ↗</Tap><Text style={styles.footerCopy}>Recipes worth making. Memories worth keeping. 💜</Text></View>}
