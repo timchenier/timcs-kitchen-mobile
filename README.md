@@ -2,6 +2,22 @@
 
 The **standalone native Expo/React Native app** for [TimC's Kitchen](https://timcskitchen.com). This repository deliberately contains **only** the mobile application, not the private jackOS website, database, administration tools, or credentials.
 
+## TimC's Kitchen v0.2.0 — TestFlight release
+
+The app source is prepared for the next signed iPhone build with the existing app identity:
+
+- Version: `0.2.0`; iOS build number baseline: `2` (the `testflight` EAS profile may automatically increment it when building).
+- Bundle ID: `com.timcskitchen.mobile` — **do not create a new Apple app**.
+- Apple App Store Connect ID: `6833304903`.
+- Included changes: public offline recipe cache and pull-to-refresh, secure Kitchen account sign-in, favorites syncing, and owner cooking history.
+- Design: existing plum-and-gold cookbook layout preserved.
+
+**To put this build on the phone:** Open the [prefilled Expo Launch link](https://launch.dev/?github=https%3A%2F%2Fgithub.com%2Ftimchenier%2Ftimcs-kitchen-mobile&projectName=timcs-kitchen&appName=TimC%27s%20Kitchen&appBundleId=com.timcskitchen.mobile). Use the **existing Expo account and existing TimC's Kitchen Apple record**, choose iOS/TestFlight, authorize signing, review Expo's cost screen (stay within Free usage), and launch/submit. After Apple processes the signed upload, TestFlight can show an **Update** button for the existing app.
+
+Expo Launch does **not** automatically detect commits, so rerun it for this new version. Source commits and GitHub Actions passing do not submit a native build. Only the Expo/Apple account holder can complete the signed build authorization.
+
+**Smoke-test sequence:** Sign in to Kitchen Sync; favorite a recipe; verify its heart on timcskitchen.com; record a cook on the phone; check the same history on the website; restart offline after a successful online catalog load; return online and pull down to refresh. Confirm signed-out hearts remain local and a regular Kitchen member cannot access private cooking history.
+
 ## Launch from your browser (no Terminal)
 
 1. Open **[Launch TimC's Kitchen in Expo](https://launch.dev/?github=https%3A%2F%2Fgithub.com%2Ftimchenier%2Ftimcs-kitchen-mobile&projectName=timcs-kitchen&appName=TimC%27s%20Kitchen&appBundleId=com.timcskitchen.mobile)**. The repository and identifiers are prefilled.
