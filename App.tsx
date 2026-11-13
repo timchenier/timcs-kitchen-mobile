@@ -257,6 +257,16 @@ export default function App() {
       setSyncOwner(profile.owner);
       setSyncEmail(profile.email);
     } catch (e) {
+      // Keep a valid on-device sign-in visible even if the Kitchen API is down.
+      // Do not claim cloud access or reuse another user's private history.
+      const session = await restoreSession().catch(() => null);
+      setSyncSignedIn(Boolean(session));
+      setSyncEmail(session?.user?.email || "");
+      setSyncConnected(false);
+      setSyncPending(false);
+      setSyncOwner(false);
+      setCookEntries([]);
+      setFavorites(await localFavorites());
       const message = e instanceof Error ? e.message : "Kitchen Sync could not connect.";
       setSyncNotice(message);
       throw e;
@@ -407,7 +417,7 @@ export default function App() {
                     <View style={styles.statsRow}>
                       <Text style={styles.statsText}>{recipes.length} curated recipes</Text>
                       <Pressable onPress={() => setSyncModal(true)} accessibilityRole="button">
-                        <Text style={styles.statsText}>{syncConnected ? "✓ Kitchen Sync" : syncPending ? "◷ Approval pending" : syncSignedIn ? "Reconnect Kitchen ↗" : "Sign in to sync ↗"}</Text>
+                        <Text style={styles.statsText}>{syncConnected ? "✓ Kitchen Account" : syncPending ? "◷ Approval pending" : syncSignedIn ? "Reconnect Kitchen ↗" : "Sign in / Join ↗"}</Text>
                       </Pressable>
                     </View>
                     <Text style={styles.sectionHeading}>Find something delicious</Text>
@@ -435,7 +445,7 @@ export default function App() {
             </View>
           )}
       <KitchenAccountModal
-        visible={syncModal} email={syncEmail} connected={syncConnected} pending={syncPending}
+        visible={syncModal} email={syncEmail} signedIn={syncSignedIn} connected={syncConnected} pending={syncPending}
         loading={syncBusy} notice={syncNotice} onClose={() => setSyncModal(false)}
         onConnected={syncKitchen} onSignOut={signOutKitchen}
       />
