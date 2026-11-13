@@ -246,14 +246,16 @@ export default function App() {
     setSyncNotice("");
     try {
       const profile = await kitchenAccount();
+      // Finish all required reads before displaying a successful cloud connection.
+      const syncedFavorites = profile.approved ? await favoriteSlugs() : await localFavorites();
+      const syncedHistory = profile.owner ? await getHistory() : [];
+      setFavorites(syncedFavorites);
+      setCookEntries(syncedHistory);
       setSyncSignedIn(true);
       setSyncConnected(profile.approved);
       setSyncPending(profile.pending);
       setSyncOwner(profile.owner);
       setSyncEmail(profile.email);
-      if (profile.approved) setFavorites(await favoriteSlugs());
-      else setFavorites(await localFavorites());
-      setCookEntries(profile.owner ? await getHistory() : []);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Kitchen Sync could not connect.";
       setSyncNotice(message);
