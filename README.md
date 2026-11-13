@@ -2,6 +2,14 @@
 
 The **standalone native Expo/React Native app** for [TimC's Kitchen](https://timcskitchen.com). This repository deliberately contains **only** the mobile application, not the private jackOS website, database, administration tools, or credentials.
 
+## TimC's Kitchen v0.2.1 — Native account completion
+
+This next native update adds first-class **Sign in / Create account**, the existing website-linked password recovery experience, clear pending-approval state, sign-out, and account retry. The Kitchen backend automatically creates a pending membership request for a first-time verified mobile sign-in; only the owner may approve members. The original cookbook design stays unchanged.
+
+Existing iOS bundle identifier: `com.timcskitchen.mobile`; version `0.2.1`; iOS build number baseline `5` (Expo's EAS build may increment it). Confirm that the build number exceeds the latest upload in App Store Connect before submitting. Only the signed Expo/Apple account holder can start a new TestFlight build. No build is triggered by GitHub commits.
+
+**Verification before distribution:** website reset email and link successfully returns to the recovery form, authenticated native owner gets history, nonowner remains pending until approval, favorites sync only after approval, sign-out returns to local favorites, and offline recipe browsing still works.
+
 ## TimC's Kitchen v0.2.0 — TestFlight release
 
 The app source is prepared for the next signed iPhone build with the existing app identity:
