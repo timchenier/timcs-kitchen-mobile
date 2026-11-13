@@ -39,7 +39,13 @@ The `preview` profile in `eas.json` produces an installable Android APK when an 
 
 The app retrieves **public, published** recipes from `https://timcskitchen.com/api/recipes/mobile-catalog`. It does not embed admin credentials, access private drafts, or duplicate the main Kitchen database.
 
-**Not yet shipped:** signed TestFlight IPA, Android APK, offline recipe storage, authenticated native Studio/favorites/journal editing, or background timer notifications. Those capabilities require separate setup and testing.
+**Still pending beyond Build 1:** Android APK, authenticated native Studio/favorites/journal editing, offline editing, and background timer notifications. Those capabilities require separate setup and testing.
+
+### Next TestFlight candidate — safe reliability upgrade
+
+This branch adds **on-device caching for the public recipe catalog** and **pull-to-refresh** on the existing recipe list. After a successful online load, saved published recipes remain readable on the device even when the API or network is temporarily unavailable. It does not store private account data or change the existing screen layout, visual styling, or server database.
+
+This is source code for the **next** beta, not an update to the TestFlight Build 1 already on phones. Because local storage needs a native dependency, a new signed iOS build must be generated and tested before distribution. Pull-to-refresh and offline startup should be validated on an iPhone with airplane mode toggled.
 
 ### Costs
 
