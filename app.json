@@ -27,7 +27,9 @@
       }
     },
     "extra": {
-      "kitchenOrigin": "https://timcskitchen.com"
+      "kitchenOrigin": "https://timcskitchen.com",
+      "supabaseUrl": "https://nlghbakxeeyxdddgrmzu.supabase.co",
+      "supabasePublishableKey": "sb_publishable_VpXjbdsRvZsX9FjkEF9SmA_XaGimjBV"
     }
   }
 }
