@@ -18,6 +18,14 @@ Expo Launch does **not** automatically detect commits, so rerun it for this new 
 
 **Smoke-test sequence:** Sign in to Kitchen Sync; favorite a recipe; verify its heart on timcskitchen.com; record a cook on the phone; check the same history on the website; restart offline after a successful online catalog load; return online and pull down to refresh. Confirm signed-out hearts remain local and a regular Kitchen member cannot access private cooking history.
 
+## Kitchen Account improvements (next native build)
+
+The next source update makes the existing Kitchen Sync account panel a complete, in-app account entry point. Tap **Sign in / Join** on the recipe library screen. Choose **Sign in** for an existing TimC's Kitchen account, or **Create account** to register directly from the iPhone. Email confirmation returns to the existing Kitchen website, then the member can sign in on the phone. A verified new member is added to the *pending* approval queue (never automatically approved). **Forgot your password?** opens `https://timcskitchen.com/recipes/reset-password` for email recovery.
+
+Signed-in members can refresh approval and favorites status or sign out. The mobile session remains in SecureStore; private Studio and cooking history are still restricted to the owner. The original cookbook layout and colors are unchanged.
+
+This requires the companion `timchenier/jackos.live` mobile-account API fix and new password reset route to be deployed **before** testing the updated native build. A new signed TestFlight build is required; changing GitHub source cannot update an already-installed beta.
+
 ## Launch from your browser (no Terminal)
 
 1. Open **[Launch TimC's Kitchen in Expo](https://launch.dev/?github=https%3A%2F%2Fgithub.com%2Ftimchenier%2Ftimcs-kitchen-mobile&projectName=timcs-kitchen&appName=TimC%27s%20Kitchen&appBundleId=com.timcskitchen.mobile)**. The repository and identifiers are prefilled.
