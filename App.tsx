@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator, AppState, FlatList, Image, type ImageStyle, Linking, Pressable, SafeAreaView, ScrollView,
+  ActivityIndicator, Alert, AppState, FlatList, Image, type ImageStyle, Linking, Pressable, SafeAreaView, ScrollView,
   Share, StatusBar, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import { useKeepAwake } from "expo-keep-awake";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import KitchenAccountModal from "./KitchenAccountModal";
+import { auth, account as kitchenAccount, favoriteSlugs, saveFavorite, history as getHistory, logCook, localFavorites, setLocalFavorites, restoreSession, type CookHistory } from "./kitchenSync";
 
 const API = "https://timcskitchen.com/api/recipes/mobile-catalog";
 const CATALOG_CACHE_KEY = "timcskitchen:published-recipes:v1";
@@ -156,13 +158,19 @@ function CookingScreen({ recipe, onBack }: { recipe: Recipe; onBack: () => void 
 }
 
 function RecipeDetails({
-  recipe, onBack, onCook,
-}: { recipe: Recipe; onBack: () => void; onCook: () => void }) {
+  recipe, onBack, onCook, favorite, onFavorite, owner, onLogCook, historyEntries,
+}: {
+  recipe: Recipe; onBack: () => void; onCook: () => void; favorite: boolean;
+  onFavorite: () => void; owner: boolean; onLogCook: () => void; historyEntries: CookHistory[];
+}) {
   return (
     <View style={styles.flex}>
       <View style={styles.detailHeader}>
         <Pressable onPress={onBack} accessibilityRole="button"><Text style={styles.backText}>‹ All recipes</Text></Pressable>
-        <Pressable onPress={() => void Share.share({ message: `${recipe.title} — ${SITE}/recipes/${recipe.slug}` })} accessibilityRole="button"><Text style={styles.backText}>Share ↗</Text></Pressable>
+        <View style={styles.buttonRow}>
+          <Pressable onPress={onFavorite} accessibilityRole="button" accessibilityLabel={favorite ? "Remove favorite" : "Save favorite"}><Text style={styles.backText}>{favorite ? "♥ Saved" : "♡ Save"}</Text></Pressable>
+          <Pressable onPress={() => void Share.share({ message: `${recipe.title} — ${SITE}/recipes/${recipe.slug}` })} accessibilityRole="button"><Text style={styles.backText}>Share ↗</Text></Pressable>
+        </View>
       </View>
       <ScrollView contentContainerStyle={styles.detailBody}>
         <Image source={{ uri: recipe.photoUrl }} style={styles.detailImage as ImageStyle} resizeMode="cover" />
@@ -175,6 +183,16 @@ function RecipeDetails({
           <View><Text style={styles.summaryNum}>{recipe.steps.length}</Text><Text style={styles.meta}>Steps</Text></View>
         </View>
         <Tap onPress={onCook} style={styles.wideButton}>🍳  Start cooking</Tap>
+        {owner && (
+          <View style={styles.ingredientCard}>
+            <Text style={styles.sectionHeading}>Cooking journal</Text>
+            <Text style={styles.meta}>{historyEntries.length} recorded {historyEntries.length === 1 ? "cook" : "cooks"} for this recipe</Text>
+            <Tap secondary onPress={onLogCook}>+ Record cooking today</Tap>
+            {historyEntries.slice(0, 3).map((entry) => (
+              <Text style={styles.bodyListText} key={entry.id}>✓ {entry.cooked_on}{entry.rating ? ` · ${entry.rating}/5 ★` : ""}{entry.notes ? ` · ${entry.notes}` : ""}</Text>
+            ))}
+          </View>
+        )}
         <View style={styles.buttonRow}>
           <Tap secondary style={styles.fill} onPress={() => void Linking.openURL(`${SITE}/recipes/${recipe.slug}`)}>Journal & edits ↗</Tap>
           <Tap secondary style={styles.fill} onPress={() => void Share.share({ message: recipe.ingredients.map((item) => `☐ ${item}`).join("\n") })}>Share grocery list</Tap>
@@ -210,6 +228,99 @@ export default function App() {
   const [category, setCategory] = useState("All");
   const [selected, setSelected] = useState<Recipe | null>(null);
   const [mode, setMode] = useState<Mode>("library");
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [syncModal, setSyncModal] = useState(false);
+  const [syncSignedIn, setSyncSignedIn] = useState(false);
+  const [syncConnected, setSyncConnected] = useState(false);
+  const [syncPending, setSyncPending] = useState(false);
+  const [syncOwner, setSyncOwner] = useState(false);
+  const [syncEmail, setSyncEmail] = useState("");
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [syncNotice, setSyncNotice] = useState("");
+  const [cookEntries, setCookEntries] = useState<CookHistory[]>([]);
+  const favoriteInFlight = useRef(new Set<string>());
+
+  const syncKitchen = useCallback(async () => {
+    setSyncBusy(true);
+    setSyncNotice("");
+    try {
+      const profile = await kitchenAccount();
+      // Finish all required reads before displaying a successful cloud connection.
+      const syncedFavorites = profile.approved ? await favoriteSlugs() : await localFavorites();
+      const syncedHistory = profile.owner ? await getHistory() : [];
+      setFavorites(syncedFavorites);
+      setCookEntries(syncedHistory);
+      setSyncSignedIn(true);
+      setSyncConnected(profile.approved);
+      setSyncPending(profile.pending);
+      setSyncOwner(profile.owner);
+      setSyncEmail(profile.email);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Kitchen Sync could not connect.";
+      setSyncNotice(message);
+      throw e;
+    } finally { setSyncBusy(false); }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void localFavorites().then((slugs) => { if (active) setFavorites(slugs); });
+    void restoreSession().then((session) => {
+      if (active && session) void syncKitchen().catch(() => {});
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [syncKitchen]);
+
+  async function signOutKitchen() {
+    setSyncBusy(true);
+    try {
+      const result = await auth.auth.signOut();
+      if (result.error) throw result.error;
+      setSyncSignedIn(false);
+      setSyncConnected(false);
+      setSyncPending(false);
+      setSyncOwner(false);
+      setSyncEmail("");
+      setCookEntries([]);
+      setFavorites(await localFavorites());
+      setSyncNotice("");
+      setSyncModal(false);
+    } catch (e) {
+      setSyncNotice(e instanceof Error ? e.message : "Could not sign out.");
+    } finally { setSyncBusy(false); }
+  }
+  async function toggleFavorite(slug: string) {
+    if (favoriteInFlight.current.has(slug)) return;
+    favoriteInFlight.current.add(slug);
+    const before = favorites;
+    const favorite = !before.includes(slug);
+    const next = favorite ? [...before, slug] : before.filter((item) => item !== slug);
+    setFavorites(next);
+    try {
+      if (syncConnected) await saveFavorite(slug, favorite);
+      else await setLocalFavorites(next);
+    } catch {
+      setFavorites(before);
+      Alert.alert("Favorite not saved", "The Kitchen couldn't save that change. Please try again.");
+    } finally { favoriteInFlight.current.delete(slug); }
+  }
+  function confirmLogCook(recipe: Recipe) {
+    Alert.alert("Record today's cook?", `Save a cooking journal entry for ${recipe.title}? You can add notes and photos later on the website.`, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Save entry", onPress: () => {
+        void (async () => {
+          try {
+            await logCook(recipe.slug);
+            setCookEntries(await getHistory());
+            Alert.alert("Saved to Kitchen", "Your cooking session is now recorded in your Kitchen journal.");
+          } catch (e) {
+            Alert.alert("Could not save", e instanceof Error ? e.message : "Try again when connected.");
+          }
+        })();
+      } },
+    ]);
+  }
 
   const load = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true);
@@ -259,8 +370,9 @@ export default function App() {
   const categories = useMemo(() => ["All", ...new Set(recipes.map((r) => r.category))], [recipes]);
   const matching = useMemo(() => recipes.filter((r) =>
     (category === "All" || r.category === category) &&
+    (!favoritesOnly || favorites.includes(r.slug)) &&
     `${r.title} ${r.category}`.toLowerCase().includes(query.trim().toLowerCase())
-  ), [recipes, category, query]);
+  ), [recipes, category, query, favorites, favoritesOnly]);
 
   function openRecipe(recipe: Recipe) { setSelected(recipe); setMode("details"); }
   return (
@@ -269,7 +381,10 @@ export default function App() {
       {mode === "cooking" && selected
         ? <CookingScreen key={selected.slug} recipe={selected} onBack={() => setMode("details")} />
         : mode === "details" && selected
-          ? <RecipeDetails recipe={selected} onBack={() => setMode("library")} onCook={() => setMode("cooking")} />
+          ? <RecipeDetails recipe={selected} onBack={() => setMode("library")} onCook={() => setMode("cooking")}
+              favorite={favorites.includes(selected.slug)} onFavorite={() => void toggleFavorite(selected.slug)}
+              owner={syncOwner} onLogCook={() => confirmLogCook(selected)}
+              historyEntries={cookEntries.filter((entry) => entry.recipe_slug === selected.slug)} />
           : (
             <View style={styles.flex}>
               <View style={styles.brandBar}>
@@ -289,10 +404,18 @@ export default function App() {
                       <Text style={styles.heroTitle}>Every good recipe{"\n"}has a story.</Text>
                       <Text style={styles.heroCopy}>All your delicious dishes, ready when you are.</Text>
                     </View>
-                    <View style={styles.statsRow}><Text style={styles.statsText}>{recipes.length} curated recipes</Text><Text style={styles.statsText}>Native cooking mode</Text></View>
+                    <View style={styles.statsRow}>
+                      <Text style={styles.statsText}>{recipes.length} curated recipes</Text>
+                      <Pressable onPress={() => setSyncModal(true)} accessibilityRole="button">
+                        <Text style={styles.statsText}>{syncConnected ? "✓ Kitchen Sync" : syncPending ? "◷ Approval pending" : syncSignedIn ? "Reconnect Kitchen ↗" : "Sign in to sync ↗"}</Text>
+                      </Pressable>
+                    </View>
                     <Text style={styles.sectionHeading}>Find something delicious</Text>
                     <TextInput placeholder="Search recipes…" placeholderTextColor="#A18F99" value={query} onChangeText={setQuery} autoCorrect={false} style={styles.search} />
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
+                      <Pressable accessibilityRole="button" style={[styles.categoryPill, favoritesOnly && styles.categorySelected]} onPress={() => setFavoritesOnly((old) => !old)}>
+                        <Text style={[styles.categoryText, favoritesOnly && styles.categoryTextSelected]}>♥ Favorites ({favorites.length})</Text>
+                      </Pressable>
                       {categories.map((name) => <Pressable accessibilityRole="button" key={name} style={[styles.categoryPill, category === name && styles.categorySelected]} onPress={() => setCategory(name)}><Text style={[styles.categoryText, category === name && styles.categoryTextSelected]}>{name}</Text></Pressable>)}
                     </ScrollView>
                     {loading && <ActivityIndicator size="large" color={PLUM} style={styles.loading} />}
@@ -302,13 +425,20 @@ export default function App() {
                 renderItem={({ item }) => <Pressable onPress={() => openRecipe(item)} style={styles.recipeCard}>
                   <Image source={{ uri: item.photoUrl }} style={styles.cardImage as ImageStyle} />
                   <View style={styles.cardCopy}><Text style={styles.cardCategory}>{item.category}</Text><Text numberOfLines={2} style={styles.cardTitle}>{item.title}</Text><Text style={styles.meta}>{item.prepMinutes + item.cookMinutes} min · {item.steps.length} timed steps</Text></View>
-                  <Text style={styles.cardChevron}>›</Text>
+                  <Pressable accessibilityRole="button" accessibilityLabel={favorites.includes(item.slug) ? "Remove favorite" : "Save favorite"} onPress={(event) => { event.stopPropagation(); void toggleFavorite(item.slug); }}>
+                    <Text style={styles.cardChevron}>{favorites.includes(item.slug) ? "♥" : "♡"}</Text>
+                  </Pressable>
                 </Pressable>}
                 ListEmptyComponent={!loading && !error ? <Text style={styles.empty}>No recipes match those filters.</Text> : undefined}
                 ListFooterComponent={<View style={styles.footer}><Tap secondary onPress={() => void Linking.openURL(`${SITE}/recipes/studio`)}>Open Recipe Studio ↗</Tap><Text style={styles.footerCopy}>Recipes worth making. Memories worth keeping. 💜</Text></View>}
               />
             </View>
           )}
+      <KitchenAccountModal
+        visible={syncModal} email={syncEmail} connected={syncConnected} pending={syncPending}
+        loading={syncBusy} notice={syncNotice} onClose={() => setSyncModal(false)}
+        onConnected={syncKitchen} onSignOut={signOutKitchen}
+      />
     </SafeAreaView>
   );
 }
