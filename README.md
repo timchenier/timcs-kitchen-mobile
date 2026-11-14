@@ -2,6 +2,18 @@
 
 The **standalone native Expo/React Native app** for [TimC's Kitchen](https://timcskitchen.com). This repository deliberately contains **only** the mobile application, not the private jackOS website, database, administration tools, or credentials.
 
+## TimC's Kitchen v0.3.0 — Persistent header and recipe features
+
+- The existing brand and icon remain above the library, recipe details, and cooking mode.
+- Saved and Account controls sit together at the right of the header. Saved opens all saved recipes, clearing stale search/category filters.
+- Recipe details now have ingredient checkboxes with reset, Best Tips from the published catalog, and owner-only cooking entries with notes and optional 1–5 ratings.
+- Successful journal saves use the server-returned entry immediately; a separate history refresh cannot make a successful save look failed.
+- Existing colors, branding, hero, recipe cards, authentication and website permissions are preserved.
+
+Version `0.3.0`, iOS build baseline `6`. This source update still requires a signed Expo/TestFlight build; GitHub does not distribute it to installed apps.
+
+Before distribution, check the fixed header and account sheet at narrow iPhone widths and large text sizes; Saved from each screen; checkboxes and reset; tips; owner journal save with notes/rating; failed saves retaining the draft; sign-out and nonowner access. Returning from cooking mode still resets that screen's local timer/checklist, as before.
+
 ## TimC's Kitchen v0.2.1 — Native account completion
 
 This next native update adds first-class **Sign in / Create account**, the existing website-linked password recovery experience, clear pending-approval state, sign-out, and account retry. The Kitchen backend automatically creates a pending membership request for a first-time verified mobile sign-in; only the owner may approve members. The original cookbook design stays unchanged.

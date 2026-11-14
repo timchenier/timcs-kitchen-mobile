@@ -88,11 +88,11 @@ export async function history(): Promise<CookHistory[]> {
   const response = await call("history");
   return Array.isArray(response.entries) ? response.entries as CookHistory[] : [];
 }
-export async function logCook(slug: string, notes = "", rating: number | null = null): Promise<void> {
+export async function logCook(slug: string, notes = "", rating: number | null = null, clientKey = "native_" + Date.now() + "_" + Math.random().toString(36).slice(2, 11)): Promise<CookHistory> {
   const day = new Date();
   const cookedOn = [day.getFullYear(), String(day.getMonth() + 1).padStart(2, "0"), String(day.getDate()).padStart(2, "0")].join("-");
-  const clientKey = "native_" + Date.now() + "_" + Math.random().toString(36).slice(2, 11);
-  await call("history", { action: "log-cook", recipeSlug: slug, cookedOn, clientKey, outcome: "made", notes, rating });
+  const response = await call("history", { action: "log-cook", recipeSlug: slug, cookedOn, clientKey, outcome: "made", notes, rating });
+  return response.entry as CookHistory;
 }
 export async function localFavorites(): Promise<string[]> {
   try {

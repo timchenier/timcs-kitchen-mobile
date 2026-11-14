@@ -2,7 +2,7 @@
   "expo": {
     "name": "TimC's Kitchen",
     "slug": "timcs-kitchen",
-    "version": "0.2.1",
+    "version": "0.3.0",
     "orientation": "portrait",
     "scheme": "timcskitchen",
     "userInterfaceStyle": "light",
@@ -16,11 +16,11 @@
         "ITSAppUsesNonExemptEncryption": false
       },
       "appleTeamId": "4ADR7ZND8C",
-      "buildNumber": "5"
+      "buildNumber": "6"
     },
     "android": {
       "package": "com.timcskitchen.mobile",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#54304E"

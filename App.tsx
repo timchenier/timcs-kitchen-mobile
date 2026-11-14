@@ -161,8 +161,27 @@ function RecipeDetails({
   recipe, onBack, onCook, favorite, onFavorite, owner, onLogCook, historyEntries,
 }: {
   recipe: Recipe; onBack: () => void; onCook: () => void; favorite: boolean;
-  onFavorite: () => void; owner: boolean; onLogCook: () => void; historyEntries: CookHistory[];
+  onFavorite: () => void; owner: boolean; onLogCook: (notes: string, rating: number | null, clientKey: string) => Promise<void>; historyEntries: CookHistory[];
 }) {
+  const [checked, setChecked] = useState<number[]>([]);
+  const [journalOpen, setJournalOpen] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [rating, setRating] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const journalKey = useRef("native_" + Date.now() + "_" + Math.random().toString(36).slice(2, 11));
+  async function saveJournal() {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await onLogCook(notes.trim(), rating, journalKey.current);
+      journalKey.current = "native_" + Date.now() + "_" + Math.random().toString(36).slice(2, 11);
+      setNotes(""); setRating(null); setJournalOpen(false);
+    } catch (e) {
+      Alert.alert("Could not save", e instanceof Error ? e.message : "Please try again.");
+    } finally { savingRef.current = false; setSaving(false); }
+  }
   return (
     <View style={styles.flex}>
       <View style={styles.detailHeader}>
@@ -187,7 +206,15 @@ function RecipeDetails({
           <View style={styles.ingredientCard}>
             <Text style={styles.sectionHeading}>Cooking journal</Text>
             <Text style={styles.meta}>{historyEntries.length} recorded {historyEntries.length === 1 ? "cook" : "cooks"} for this recipe</Text>
-            <Tap secondary onPress={onLogCook}>+ Record cooking today</Tap>
+            <Tap secondary disabled={saving} onPress={() => setJournalOpen((open) => !open)}>{journalOpen ? "Close entry" : "+ Record cooking today"}</Tap>
+            {journalOpen && <View style={styles.journalForm}>
+              <Text style={styles.meta}>Today's cook · optional rating and notes</Text>
+              <View style={styles.buttonRow}>
+                {[1, 2, 3, 4, 5].map((value) => <Pressable key={value} disabled={saving} accessibilityRole="button" accessibilityLabel={`Rate ${value} out of 5 stars`} accessibilityState={{ selected: rating === value }} onPress={() => setRating(rating === value ? null : value)} style={styles.starButton}><Text style={styles.ratingStar}>{rating !== null && value <= rating ? "★" : "☆"}</Text></Pressable>)}
+              </View>
+              <TextInput accessibilityLabel="Cooking notes" placeholder="How did it turn out? Changes for next time…" placeholderTextColor="#A18F99" multiline maxLength={5000} editable={!saving} value={notes} onChangeText={setNotes} style={[styles.search, styles.notesInput]} />
+              <Tap disabled={saving} onPress={() => void saveJournal()}>{saving ? "Saving…" : "Save cooking entry"}</Tap>
+            </View>}
             {historyEntries.slice(0, 3).map((entry) => (
               <Text style={styles.bodyListText} key={entry.id}>✓ {entry.cooked_on}{entry.rating ? ` · ${entry.rating}/5 ★` : ""}{entry.notes ? ` · ${entry.notes}` : ""}</Text>
             ))}
@@ -199,8 +226,17 @@ function RecipeDetails({
         </View>
         <View style={styles.ingredientCard}>
           <Text style={styles.sectionHeading}>Ingredients</Text>
-          {recipe.ingredients.map((item, i) => <Text style={styles.bodyListText} key={i}>◦  {item}</Text>)}
+          <Text style={styles.meta}>{checked.length} / {recipe.ingredients.length} ready</Text>
+          {recipe.ingredients.map((item, i) => <Pressable key={i} accessibilityRole="checkbox" accessibilityState={{ checked: checked.includes(i) }} style={styles.ingredientRow} onPress={() => setChecked((old) => old.includes(i) ? old.filter((value) => value !== i) : [...old, i])}>
+            <Text style={styles.checkbox}>{checked.includes(i) ? "☑" : "☐"}</Text>
+            <Text style={[styles.ingredientText, checked.includes(i) && styles.strike]}>{item}</Text>
+          </Pressable>)}
+          {checked.length > 0 && <Tap secondary onPress={() => setChecked([])}>Reset checklist</Tap>}
         </View>
+        {recipe.tips?.length > 0 && <View style={styles.ingredientCard}>
+          <Text style={styles.sectionHeading}>Best Tips</Text>
+          {recipe.tips.map((tip, i) => <Text style={styles.bodyListText} key={i}>• {tip}</Text>)}
+        </View>}
         <View style={styles.ingredientCard}>
           <Text style={styles.sectionHeading}>The steps</Text>
           {recipe.steps.map((step, i) => (
@@ -315,21 +351,10 @@ export default function App() {
       Alert.alert("Favorite not saved", "The Kitchen couldn't save that change. Please try again.");
     } finally { favoriteInFlight.current.delete(slug); }
   }
-  function confirmLogCook(recipe: Recipe) {
-    Alert.alert("Record today's cook?", `Save a cooking journal entry for ${recipe.title}? You can add notes and photos later on the website.`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Save entry", onPress: () => {
-        void (async () => {
-          try {
-            await logCook(recipe.slug);
-            setCookEntries(await getHistory());
-            Alert.alert("Saved to Kitchen", "Your cooking session is now recorded in your Kitchen journal.");
-          } catch (e) {
-            Alert.alert("Could not save", e instanceof Error ? e.message : "Try again when connected.");
-          }
-        })();
-      } },
-    ]);
+  async function saveCook(recipe: Recipe, notes: string, rating: number | null, clientKey: string) {
+    if (!syncOwner) throw new Error("Sign in as the Kitchen owner to save cooking history.");
+    const entry = await logCook(recipe.slug, notes, rating, clientKey);
+    setCookEntries((old) => [entry, ...old.filter((item) => item.id !== entry.id)]);
   }
 
   const load = useCallback(async (refresh = false) => {
@@ -388,19 +413,29 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
+      <View style={styles.persistentHeader}>
+        <View style={styles.brandBar}>
+          <View style={styles.brandSeal}><Text style={styles.brandSealText}>✦</Text></View>
+          <View style={styles.fill}><Text adjustsFontSizeToFit numberOfLines={1} style={styles.brandTitle}>TimC&apos;s <Text style={styles.brandAccent}>Kitchen</Text></Text><Text style={styles.brandTag}>RECIPES WORTH MAKING</Text></View>
+        </View>
+        <View style={styles.headerActions}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`Show ${favorites.length} saved recipes`} onPress={() => { setFavoritesOnly(true); setCategory("All"); setQuery(""); setMode("library"); }} style={styles.headerAction}>
+            <Text style={styles.headerActionText}>♥ Saved ({favorites.length})</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={syncSignedIn ? `Kitchen account, ${syncEmail}` : "Sign in or create account"} onPress={() => setSyncModal(true)} style={styles.headerAction}>
+            <Text style={styles.headerActionText}>{syncConnected ? "✓ Account" : syncPending ? "◷ Pending" : syncSignedIn ? "↻ Account" : "Sign in / Join"}</Text>
+          </Pressable>
+        </View>
+      </View>
       {mode === "cooking" && selected
         ? <CookingScreen key={selected.slug} recipe={selected} onBack={() => setMode("details")} />
         : mode === "details" && selected
-          ? <RecipeDetails recipe={selected} onBack={() => setMode("library")} onCook={() => setMode("cooking")}
+          ? <RecipeDetails key={selected.slug} recipe={selected} onBack={() => setMode("library")} onCook={() => setMode("cooking")}
               favorite={favorites.includes(selected.slug)} onFavorite={() => void toggleFavorite(selected.slug)}
-              owner={syncOwner} onLogCook={() => confirmLogCook(selected)}
+              owner={syncOwner} onLogCook={(notes, rating, clientKey) => saveCook(selected, notes, rating, clientKey)}
               historyEntries={cookEntries.filter((entry) => entry.recipe_slug === selected.slug)} />
           : (
             <View style={styles.flex}>
-              <View style={styles.brandBar}>
-                <View style={styles.brandSeal}><Text style={styles.brandSealText}>✦</Text></View>
-                <View><Text style={styles.brandTitle}>TimC&apos;s <Text style={styles.brandAccent}>Kitchen</Text></Text><Text style={styles.brandTag}>RECIPES WORTH MAKING</Text></View>
-              </View>
               <FlatList
                 data={matching}
                 refreshing={refreshing}
@@ -416,9 +451,6 @@ export default function App() {
                     </View>
                     <View style={styles.statsRow}>
                       <Text style={styles.statsText}>{recipes.length} curated recipes</Text>
-                      <Pressable onPress={() => setSyncModal(true)} accessibilityRole="button">
-                        <Text style={styles.statsText}>{syncConnected ? "✓ Kitchen Account" : syncPending ? "◷ Approval pending" : syncSignedIn ? "Reconnect Kitchen ↗" : "Sign in / Join ↗"}</Text>
-                      </Pressable>
                     </View>
                     <Text style={styles.sectionHeading}>Find something delicious</Text>
                     <TextInput placeholder="Search recipes…" placeholderTextColor="#A18F99" value={query} onChangeText={setQuery} autoCorrect={false} style={styles.search} />
@@ -456,6 +488,14 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: CREAM },
   flex: { flex: 1 },
+  persistentHeader: { backgroundColor: "#FFF9F2", borderBottomWidth: 1, borderColor: "#EADBD6" },
+  headerActions: { flexDirection: "row", justifyContent: "flex-end", flexWrap: "wrap", paddingHorizontal: 16, gap: 12 },
+  headerAction: { minHeight: 44, justifyContent: "center", paddingHorizontal: 4 },
+  headerActionText: { color: PLUM, fontSize: 13, fontWeight: "700" },
+  journalForm: { gap: 8, marginTop: 12 },
+  starButton: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
+  ratingStar: { fontSize: 28, color: "#AA7F43" },
+  notesInput: { minHeight: 100, textAlignVertical: "top" },
   brandBar: { minHeight: 78, flexDirection: "row", alignItems: "center", paddingHorizontal: 19, gap: 12, backgroundColor: "#FFF9F2", borderBottomWidth: 1, borderColor: "#EADBD6" },
   brandSeal: { width: 48, height: 48, borderRadius: 13, backgroundColor: PLUM, borderWidth: 2, borderColor: GOLD, justifyContent: "center", alignItems: "center" },
   brandSealText: { color: "#F1C980", fontSize: 27 },
